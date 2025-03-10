@@ -1,0 +1,14 @@
+spring:
+  application:
+    name : urlShortnerApi
+
+  # Casandra configuration
+  cassandra:
+    keySpaceName : url_shortener
+    contactPoints : localhost
+    port : 9042
+    local-datacenter : datacenter1
+    schema-action : RECREATE
+#    schema-action : CREATE_IF_NOT_EXISTS
+    username : cassandra
+    password : cassandra
