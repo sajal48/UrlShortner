@@ -2,6 +2,18 @@ spring:
   application:
     name : urlShortnerApi
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000
+      jedis:
+        pool:
+            max-active: 10
+            max-idle: 5
+            min-idle: 1
+            max-wait: -1
+
   # Casandra configuration
   cassandra:
     keySpaceName : url_shortener
