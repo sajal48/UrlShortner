@@ -1,7 +1,6 @@
 spring:
   application:
     name : urlShortnerApi
-
   data:
     redis:
       host: localhost
@@ -24,3 +23,5 @@ spring:
 #    schema-action : CREATE_IF_NOT_EXISTS
     username : cassandra
     password : cassandra
+server:
+  port: 8081

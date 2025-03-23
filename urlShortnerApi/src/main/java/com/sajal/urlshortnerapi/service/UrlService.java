@@ -12,14 +12,19 @@ import java.util.concurrent.TimeUnit;
 public class UrlService {
     private final UrlRepository urlRepository;
     private final StringRedisTemplate redisTemplate;
+    private final UrlFetchService urlFetchService;
 
-    public UrlService(UrlRepository urlRepository, StringRedisTemplate redisTemplate) {
+    public UrlService(
+            UrlRepository urlRepository,
+            StringRedisTemplate redisTemplate,
+            UrlFetchService urlFetchService) {
         this.urlRepository = urlRepository;
         this.redisTemplate = redisTemplate;
+        this.urlFetchService = urlFetchService;
     }
 
     public String createShortUrl(@NotNull String longUrl) {
-        String shortUrl = ShortUrlGenerator.generateShortUrl();
+        String shortUrl = urlFetchService.fetchShortUrl();
         UrlMapping urlMapping = new UrlMapping();
         urlMapping.setShortUrl(shortUrl);
         urlMapping.setLongUrl(longUrl);
@@ -34,7 +39,6 @@ public class UrlService {
         if (longUrl != null) {
             return longUrl;
         }
-
         UrlMapping urlMapping = urlRepository.findById(shortUrl).orElseThrow(() -> new IllegalArgumentException("Invalid short URL"));
         return urlMapping.getLongUrl();
     }
