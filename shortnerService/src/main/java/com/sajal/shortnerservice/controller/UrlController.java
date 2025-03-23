@@ -2,9 +2,11 @@ package com.sajal.shortnerservice.controller;
 
 import com.sajal.shortnerservice.service.UrlShortenerService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -19,12 +21,14 @@ public class UrlController {
     }
 
     @GetMapping("/generate/{number}")
+    @ResponseStatus(HttpStatus.CREATED)
     public void generate(@PathVariable(name = "number") int number) {
         urlService.generateUrl(number);
     }
 
     @GetMapping("/{shortUrl}")
-    public void update(@PathVariable String shortUrl) {
+    @ResponseStatus(HttpStatus.OK)
+    public void updateAsUsed(@PathVariable String shortUrl) {
         urlService.update(shortUrl);
     }
 }
