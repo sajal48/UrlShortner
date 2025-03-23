@@ -26,9 +26,9 @@ public class UrlController {
         urlService.generateUrl(number);
     }
 
-    @GetMapping("/{shortUrl}")
+    @GetMapping("/get")
     @ResponseStatus(HttpStatus.OK)
-    public void updateAsUsed(@PathVariable String shortUrl) {
-        urlService.update(shortUrl);
+    public String getUrl() {
+        return urlService.getUrl();
     }
 }

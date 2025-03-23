@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 
@@ -60,6 +61,29 @@ public class UrlShortenerService {
         } catch (Exception e) {
             logger.error("Error generating short URLs", e);
             return false;
+        }
+    }
+
+    @Transactional
+    public String getUrl() {
+        logger.info("Attempting to retrieve an unused short URL.");
+        Optional<ShortUrl> shortUrl = shortUrlRepository.findFirstByUsedFalse();
+        if (shortUrl.isPresent()) {
+            logger.info("Found an unused short URL: {}", shortUrl.get().getShortUrl());
+            update(shortUrl.get().getShortUrl());
+            return shortUrl.get().getShortUrl();
+        } else {
+            logger.warn("No unused short URL found. Generating new short URLs.");
+            boolean result = generateUrl(5);
+            if (!result) {
+                logger.error("Error generating new short URLs.");
+                throw new IllegalArgumentException("Error getting short URL");
+            }
+            shortUrl = shortUrlRepository.findFirstByUsedFalse();
+            String newShortUrl = shortUrl.orElseThrow().getShortUrl();
+            logger.info("Generated and retrieved a new short URL: {}", newShortUrl);
+            update(newShortUrl);
+            return newShortUrl;
         }
     }
 }
