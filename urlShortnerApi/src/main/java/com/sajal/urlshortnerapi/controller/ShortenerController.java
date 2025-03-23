@@ -38,7 +38,7 @@ public class ShortenerController {
     @RequestMapping(path = "/url/{shortUrl}", method = GET)
     ResponseEntity<Void> getLongUrl(@PathVariable(name = "shortUrl") @ValidShortUrl String shortUrl) {
         String longUrl = urlService.getLongUrl(shortUrl);
-        return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
+        return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT)
                 .location(URI.create(longUrl))
                 .build();
     }
