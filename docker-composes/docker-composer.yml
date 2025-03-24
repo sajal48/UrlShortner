@@ -21,6 +21,17 @@ services:
       timeout: 10s
       retries: 10
 
+  cassandra-init:
+    image: cassandra:latest
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    command: >
+      bash -c "echo 'Creating keyspace url_shortener' && 
+      cqlsh cassandra -u cassandra -p cassandra -e \"CREATE KEYSPACE IF NOT EXISTS url_shortener WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'};\" &&
+      echo 'Keyspace created!'"
+    restart: on-failure
+
   redis:
     image: redis:latest
     container_name: redis
@@ -49,21 +60,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   # Zipkin for distributed tracing
   zipkin:
     image: openzipkin/zipkin:latest
     container_name: zipkin
     ports:
       - "9411:9411"
-    restart: unless-stopped
-    depends_on:
-      - cassandra
+    restart: on-failure:5
     environment:
-      - STORAGE_TYPE=cassandra
-      - CASSANDRA_CONTACT_POINTS=cassandra:9042
-      - CASSANDRA_KEYSPACE=zipkin
-      - CASSANDRA_USERNAME=cassandra
-      - CASSANDRA_PASSWORD=cassandra
+      - STORAGE_TYPE=mem
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:9411/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   prometheus:
     image: prom/prometheus:latest
