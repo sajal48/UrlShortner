@@ -2,6 +2,8 @@ package com.sajal.shortnerservice.service;
 
 import com.sajal.shortnerservice.entity.ShortUrl;
 import com.sajal.shortnerservice.repository.ShortUrlRepository;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -18,8 +20,14 @@ import java.util.stream.IntStream;
 public class UrlShortenerService {
     private static final Logger logger = LoggerFactory.getLogger(UrlShortenerService.class);
     private final ShortUrlRepository shortUrlRepository;
+    private final Tracer tracer;
     private static final String BASE62 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final SecureRandom RANDOM = new SecureRandom();
+
+    public UrlShortenerService(ShortUrlRepository shortUrlRepository, Tracer tracer) {
+        this.shortUrlRepository = shortUrlRepository;
+        this.tracer = tracer;
+    }
 
     private static String generateShortUrl() {
         StringBuilder sb = new StringBuilder(6);
@@ -29,25 +37,27 @@ public class UrlShortenerService {
         return sb.toString();
     }
 
-    public UrlShortenerService(ShortUrlRepository shortUrlRepository) {
-        this.shortUrlRepository = shortUrlRepository;
-    }
-
     @Transactional
     public void update(String shortUrl) {
-        logger.info("Updating short URL: {}", shortUrl);
-        int result = shortUrlRepository.updateUsedByShortUrl(true, shortUrl);
-        if (result == 0) {
-            logger.error("Invalid short URL: {}", shortUrl);
-            throw new IllegalArgumentException("Invalid short URL");
+        Span newSpan = tracer.nextSpan().name("updateShortUrl").start();
+        try (Tracer.SpanInScope ws = tracer.withSpan(newSpan)) {
+            logger.info("Updating short URL: {}", shortUrl);
+            int result = shortUrlRepository.updateUsedByShortUrl(true, shortUrl);
+            if (result == 0) {
+                logger.error("Invalid short URL: {}", shortUrl);
+                throw new IllegalArgumentException("Invalid short URL");
+            }
+            logger.info("Short URL updated successfully: {}", shortUrl);
+        } finally {
+            newSpan.end();
         }
-        logger.info("Short URL updated successfully: {}", shortUrl);
     }
 
     @Transactional
     public boolean generateUrl(int number) {
-        logger.info("Generating {} short URLs", number);
-        try {
+        Span newSpan = tracer.nextSpan().name("generateUrls").start();
+        try (Tracer.SpanInScope ws = tracer.withSpan(newSpan)) {
+            logger.info("Generating {} short URLs", number);
             Set<String> shortUrls = new HashSet<>();
             IntStream.range(0, number).forEach(i -> {
                 String shortUrl = generateShortUrl();
@@ -61,29 +71,36 @@ public class UrlShortenerService {
         } catch (Exception e) {
             logger.error("Error generating short URLs", e);
             return false;
+        } finally {
+            newSpan.end();
         }
     }
 
     @Transactional
     public String getUrl() {
-        logger.info("Attempting to retrieve an unused short URL.");
-        Optional<ShortUrl> shortUrl = shortUrlRepository.findFirstByUsedFalse();
-        if (shortUrl.isPresent()) {
-            logger.info("Found an unused short URL: {}", shortUrl.get().getShortUrl());
-            update(shortUrl.get().getShortUrl());
-            return shortUrl.get().getShortUrl();
-        } else {
-            logger.warn("No unused short URL found. Generating new short URLs.");
-            boolean result = generateUrl(5);
-            if (!result) {
-                logger.error("Error generating new short URLs.");
-                throw new IllegalArgumentException("Error getting short URL");
+        Span newSpan = tracer.nextSpan().name("getUrl").start();
+        try (Tracer.SpanInScope ws = tracer.withSpan(newSpan)) {
+            logger.info("Attempting to retrieve an unused short URL.");
+            Optional<ShortUrl> shortUrl = shortUrlRepository.findFirstByUsedFalse();
+            if (shortUrl.isPresent()) {
+                logger.info("Found an unused short URL: {}", shortUrl.get().getShortUrl());
+                update(shortUrl.get().getShortUrl());
+                return shortUrl.get().getShortUrl();
+            } else {
+                logger.warn("No unused short URL found. Generating new short URLs.");
+                boolean result = generateUrl(5);
+                if (!result) {
+                    logger.error("Error generating new short URLs.");
+                    throw new IllegalArgumentException("Error getting short URL");
+                }
+                shortUrl = shortUrlRepository.findFirstByUsedFalse();
+                String newShortUrl = shortUrl.orElseThrow().getShortUrl();
+                logger.info("Generated and retrieved a new short URL: {}", newShortUrl);
+                update(newShortUrl);
+                return newShortUrl;
             }
-            shortUrl = shortUrlRepository.findFirstByUsedFalse();
-            String newShortUrl = shortUrl.orElseThrow().getShortUrl();
-            logger.info("Generated and retrieved a new short URL: {}", newShortUrl);
-            update(newShortUrl);
-            return newShortUrl;
+        } finally {
+            newSpan.end();
         }
     }
 }
